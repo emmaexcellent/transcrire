@@ -1,18 +1,19 @@
 "use client";
 
-import { CircleStop, Trash } from "lucide-react";
+import { CircleStop } from "lucide-react";
 import Image from "next/image";
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
 
 const AudioRecorder = ({
   setAudioBlob,
+  setLocalAudioUrl,
 }: {
   setAudioBlob: React.Dispatch<React.SetStateAction<Blob | null>>;
+  setLocalAudioUrl: React.Dispatch<React.SetStateAction<string | null>>;
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [time, setTime] = useState(0); // Recording time in seconds
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -59,7 +60,7 @@ const AudioRecorder = ({
           type: "audio/wav",
         });
         setAudioBlob(audioBlob);
-        setAudioUrl(URL.createObjectURL(audioBlob));
+        setLocalAudioUrl(URL.createObjectURL(audioBlob));
         audioChunksRef.current = [];
         // Stop all audio tracks
         stream.getTracks().forEach((track) => track.stop());
@@ -96,16 +97,6 @@ const AudioRecorder = ({
       setIsRecording(false);
       setIsPaused(false);
     }
-  };
-
-  const deleteRecording = () => {
-    setAudioBlob(null);
-    setAudioUrl(null);
-    setTime(0);
-    audioChunksRef.current = [];
-    // Stop all audio tracks if recording was not stopped properly
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
   };
 
   return (
@@ -155,20 +146,6 @@ const AudioRecorder = ({
           </>
         )}
       </div>
-
-      {audioUrl && !isRecording && (
-        <div className="flex items-center gap-3">
-          <audio controls src={audioUrl} className="h-12"></audio>
-          <Button
-            size="icon"
-            variant="destructive"
-            onClick={deleteRecording}
-            aria-label="Delete Recording"
-          >
-            <Trash />
-          </Button>
-        </div>
-      )}
     </div>
   );
 };

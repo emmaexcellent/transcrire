@@ -26,6 +26,7 @@ import {
   Upload,
   ArrowRight,
   ArrowLeft,
+  Trash,
   CircleCheck,
 } from "lucide-react";
 import { transcribeAudio } from "@/lib/assemblyai/transcribe";
@@ -295,6 +296,13 @@ const GetAudio = ({
   setAudioBlob: React.Dispatch<React.SetStateAction<Blob | null>>;
   setOpenDialog: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
+  const [localAudioUrl, setLocalAudioUrl] = useState<string | null>(null);
+
+  const deleteAudio = () => {
+    setAudioBlob(null);
+    setLocalAudioUrl(null);
+  };
+
   return (
     <>
       <CardHeader>
@@ -305,9 +313,18 @@ const GetAudio = ({
       <CardContent>
         <div className="flex flex-col justify-center items-center">
           {/* Record audio */}
-          <AudioRecorder setAudioBlob={setAudioBlob} />
+          <AudioRecorder setAudioBlob={setAudioBlob} setLocalAudioUrl={setLocalAudioUrl} />
         </div>
 
+        {localAudioUrl && (
+          <div className="mt-5 mb-10 flex items-center gap-4">
+            {/* Play recorded or uploaded audio */}
+            <audio controls src={localAudioUrl} className="w-full !h-[50px]" />
+            <Button onClick={deleteAudio} variant="destructive">
+              <Trash />
+            </Button>
+          </div>
+        )}
 
         <div className="w-full flex items-center justify-between gap-5 md:gap-10">
           <div className="flex flex-col items-center">
