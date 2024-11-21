@@ -1,15 +1,16 @@
 
 
-export const uploadAudioToCloudinary = async (audioBlob: Blob | File, options = {}) => {
+export const uploadAudioToCloudinary = async (audioBlob: Blob | File) => {
   const formData = new FormData();
   formData.append("file", audioBlob);
   formData.append("upload_preset", "audio_unsaved"); // Set up an unsigned preset in Cloudinary
 
   // Additional Cloudinary options (e.g., transformations)
-  const defaultOptions = {
-    resource_type: "video", // Required for audio files
-    format: "mp3", // Convert to mp3
-  };
+
+  // const defaultOptions = {
+  //   resource_type: "video", // Required for audio files
+  //   format: "mp3", // Convert to mp3
+  // };
 
 
   try {
@@ -28,8 +29,8 @@ export const uploadAudioToCloudinary = async (audioBlob: Blob | File, options = 
     } else {
       throw new Error("Cloudinary upload failed");
     }
-  } catch (error: any) {
-    console.error("Error uploading to Cloudinary:", error.message);
+  } catch (error) {
+    console.error("Error during uploading audio!:", error);
     throw new Error("Failed to upload audio");
   }
 };
