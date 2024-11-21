@@ -6,12 +6,10 @@ const Step = ({
   icon,
   title,
   description,
-  arrowStyle,
 }: {
   icon: React.JSX.Element;
   title: string;
   description: string;
-  arrowStyle?: { left: string };
 }) => (
   <div
     id="how-it-works"

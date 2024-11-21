@@ -11,7 +11,6 @@ export const uploadAudioToCloudinary = async (audioBlob: Blob | File, options = 
     format: "mp3", // Convert to mp3
   };
 
-  const mergedOptions = { ...defaultOptions, ...options };
 
   try {
     // Make a POST request to upload the audio
@@ -29,7 +28,7 @@ export const uploadAudioToCloudinary = async (audioBlob: Blob | File, options = 
     } else {
       throw new Error("Cloudinary upload failed");
     }
-  } catch (error:any) {
+  } catch (error: any) {
     console.error("Error uploading to Cloudinary:", error.message);
     throw new Error("Failed to upload audio");
   }

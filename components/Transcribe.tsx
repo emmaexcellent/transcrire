@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { transcribeAudio } from "@/lib/assemblyai/transcribe";
 import { uploadAudioToCloudinary } from "@/lib/assemblyai/upload";
-import { Transcript } from "assemblyai";
+import { AutoHighlightResult, Chapter, ContentSafetyLabelResult, Entity, SentimentAnalysisResult, TopicDetectionResult, Transcript } from "assemblyai";
 import dynamic from "next/dynamic";
 
 // Dynamically import AudioRecorder
@@ -121,7 +121,7 @@ const Transcribe = () => {
   const [transcriptionResult, setTranscriptionResult] =
     useState<Transcript | null>(null);
 
-  const [transcription, setTranscription] = useState<any>(null);
+  const [transcription, setTranscription] = useState<string | null>(null);
 
   const generateTranscription = async () => {
     if (!audioBlob) {
@@ -190,13 +190,13 @@ const Transcribe = () => {
 
       switch (transcriptionType) {
         case "summarise":
-          setTranscription(result.summary);
+          setTranscription(result.summary || "");
           break;
         case "moderate":
           const safetyLabels = result.content_safety_labels?.results || [];
           setTranscription(
             safetyLabels
-              .map((res: any) => `- ${" "}${res.text} -> ${res.labels[0].label}`)
+              .map((res: ContentSafetyLabelResult) => `- ${" "}${res.text} -> ${res.labels[0].label}`)
               .join(".<br><br>")
           );
           break;
@@ -204,7 +204,7 @@ const Transcribe = () => {
           const chapters = result.chapters! || [];
           setTranscription(
             chapters
-              .map((res: any) => `- ${" "}${res.headline}`)
+              .map((res: Chapter) => `- ${" "}${res.headline}`)
               .join(".<br><br>")
           );
           break;
@@ -212,7 +212,7 @@ const Transcribe = () => {
           const sentiment_analysis = result.sentiment_analysis_results! || [];
           setTranscription(
             sentiment_analysis
-              .map((res: any) => `- ${" "}${res.text} -> ${res.sentiment}`)
+              .map((res: SentimentAnalysisResult) => `- ${" "}${res.text} -> ${res.sentiment}`)
               .join(".<br><br>")
           );
           break;
@@ -220,7 +220,7 @@ const Transcribe = () => {
           const entities = result.entities! || [];
           setTranscription(
             entities
-              .map((res: any) => `- ${" "}${res.text} -> ${res.entity_type}`)
+              .map((res: Entity) => `- ${" "}${res.text} -> ${res.entity_type}`)
               .join(".<br><br>")
           );
           break;
@@ -229,7 +229,7 @@ const Transcribe = () => {
           setTranscription(
             topics
               .map(
-                (res: any) => `- ${" "}${res.labels![1].label} -> ${res.text}`
+                (res: TopicDetectionResult) => `- ${" "}${res.labels![1].label} -> ${res.text}`
               )
               .join(".<br><br>")
           ); 
@@ -238,7 +238,7 @@ const Transcribe = () => {
           const phrases = result.auto_highlights_result!.results || [];
           setTranscription(
             phrases
-              .map((res: any) => `${" "}${res.text},`)
+              .map((res: AutoHighlightResult) => `${" "}${res.text},`)
               .join(" ")
           ); 
           break;
@@ -269,7 +269,6 @@ const Transcribe = () => {
         {transcriptionResult ? (
           <TranscriptionCard
             transcription={transcription}
-            transcriptionResult={transcriptionResult}
             handleResetStateProps={handleResetStateProps}
           />
         ) : (
@@ -415,6 +414,7 @@ const SelectTranscriptionType = ({
         <DialogContent>
           <DialogHeader className="mb-3">
             <DialogTitle>Select Transcription Option</DialogTitle>
+            <DialogDescription/>
           </DialogHeader>
           <Select
             defaultValue="auto"
@@ -485,11 +485,9 @@ const SelectTranscriptionType = ({
 
 const TranscriptionCard = ({
   transcription,
-  transcriptionResult,
   handleResetStateProps,
 }: {
-  transcription: any;
-  transcriptionResult: Transcript;
+  transcription: string | null;
   handleResetStateProps: () => void;
 }) => {
   const [displayedText, setDisplayedText] = useState("");
@@ -509,11 +507,11 @@ const TranscriptionCard = ({
       return () => clearInterval(interval);
     }
     return;
-  }, [transcriptionResult.text]);
+  }, [transcription]);
 
   const handleCopy = () => {
     navigator.clipboard
-      .writeText(transcription)
+      .writeText(transcription || "")
       .then(() => {
         setCopy("Copied!");
         setTimeout(() => setCopy("Copy"), 2000); // Clear success message after 2 seconds

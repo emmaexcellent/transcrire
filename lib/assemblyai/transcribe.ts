@@ -40,10 +40,3 @@ export const transcribeAudio = async (
     throw new Error("Failed to transcribe audio");
   }
 };
-
-class TranscribeAudio {
-
-  summarize = () => {
-
-  }
-}
