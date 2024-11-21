@@ -1,29 +1,37 @@
-"use client"
-import React, { useState, useRef, useEffect } from "react";
+"use client";
 
-const AudioRecorder: React.FC = () => {
+import { CircleStop, Trash } from "lucide-react";
+import Image from "next/image";
+import React, { useState, useRef, useEffect } from "react";
+import { Button } from "./ui/button";
+
+const AudioRecorder = ({
+  setAudioBlob,
+}: {
+  setAudioBlob: React.Dispatch<React.SetStateAction<Blob | null>>;
+}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [time, setTime] = useState(0); // Recording time in seconds
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const timerRef = useRef<number | null>(null); // <-- Use browser timer type
+  const timerRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (isRecording && !isPaused) {
       timerRef.current = window.setInterval(() => {
-        // <-- Use window.setInterval
         setTime((prev) => prev + 1);
       }, 1000);
     } else if (timerRef.current !== null) {
-      clearInterval(timerRef.current); // <-- No more error here
-      timerRef.current = null; // <-- Reset the timer reference
+      clearInterval(timerRef.current);
+      timerRef.current = null;
     }
+
     return () => {
       if (timerRef.current !== null) {
-        clearInterval(timerRef.current); // Clear interval on component unmount
+        clearInterval(timerRef.current);
       }
     };
   }, [isRecording, isPaused]);
@@ -39,8 +47,9 @@ const AudioRecorder: React.FC = () => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      streamRef.current = stream;
 
+      const mediaRecorder = new MediaRecorder(stream);
       mediaRecorder.ondataavailable = (event) => {
         audioChunksRef.current.push(event.data);
       };
@@ -52,6 +61,8 @@ const AudioRecorder: React.FC = () => {
         setAudioBlob(audioBlob);
         setAudioUrl(URL.createObjectURL(audioBlob));
         audioChunksRef.current = [];
+        // Stop all audio tracks
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       mediaRecorderRef.current = mediaRecorder;
@@ -61,23 +72,30 @@ const AudioRecorder: React.FC = () => {
       setTime(0);
     } catch (error) {
       console.error("Error accessing microphone:", error);
+      alert("Failed to access microphone. Please check your permissions.");
     }
   };
 
   const pauseRecording = () => {
-    mediaRecorderRef.current?.pause();
-    setIsPaused(true);
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.pause();
+      setIsPaused(true);
+    }
   };
 
   const resumeRecording = () => {
-    mediaRecorderRef.current?.resume();
-    setIsPaused(false);
+    if (mediaRecorderRef.current?.state === "paused") {
+      mediaRecorderRef.current.resume();
+      setIsPaused(false);
+    }
   };
 
   const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setIsRecording(false);
-    setIsPaused(false);
+    if (mediaRecorderRef.current?.state !== "inactive") {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+      setIsPaused(false);
+    }
   };
 
   const deleteRecording = () => {
@@ -85,82 +103,70 @@ const AudioRecorder: React.FC = () => {
     setAudioUrl(null);
     setTime(0);
     audioChunksRef.current = [];
-  };
-
-  const saveRecording = () => {
-    if (!audioBlob) return;
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(audioBlob);
-    link.download = "recording.wav";
-    link.click();
+    // Stop all audio tracks if recording was not stopped properly
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <h1 className="text-xl font-bold">Audio Recorder</h1>
-
-      <div>
-        {!isRecording && !audioBlob && (
+    <div className="py-5 space-y-4">
+      <div className="flex flex-col items-center justify-center gap-6">
+        {!isRecording ? (
           <button
-            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            className="p-3 rounded-full bg-gradient-to-tr from-primary via-primary hover:via-purple-500 to-pink-500 mb-10"
             onClick={startRecording}
+            aria-label="Start Recording"
           >
-            Start Recording
+            <Image
+              src="/mic.svg"
+              width={80}
+              height={80}
+              alt="Start Recording"
+            />
           </button>
-        )}
-        {isRecording && (
-          <div className="flex space-x-4">
-            {!isPaused ? (
-              <button
-                className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-                onClick={pauseRecording}
+        ) : (
+          <>
+            <button
+              className="p-3 rounded-full bg-gradient-to-tr from-primary via-primary hover:via-purple-500 to-pink-500 text-white"
+              onClick={isPaused ? resumeRecording : pauseRecording}
+              aria-label={isPaused ? "Resume Recording" : "Pause Recording"}
+            >
+              <Image
+                src={isPaused ? "/play.svg" : "/pause.svg"}
+                width={80}
+                height={80}
+                alt={isPaused ? "Resume Recording" : "Pause Recording"}
+              />
+            </button>
+            <div className="text-2xl font-mono text-foreground/60">
+              {formatTime(time)}
+            </div>
+
+            <div className="flex space-x-4">
+              <Button
+                size="icon"
+                variant="destructive"
+                onClick={stopRecording}
+                aria-label="Stop Recording"
               >
-                Pause
-              </button>
-            ) : (
-              <button
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                onClick={resumeRecording}
-              >
-                Resume
-              </button>
-            )}
-            <button
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-              onClick={stopRecording}
-            >
-              Stop
-            </button>
-          </div>
-        )}
-        {audioBlob && (
-          <div className="flex space-x-4">
-            <button
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
-              onClick={deleteRecording}
-            >
-              Delete
-            </button>
-            <button
-              className="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
-              onClick={saveRecording}
-            >
-              Save
-            </button>
-          </div>
+                <CircleStop />
+              </Button>
+            </div>
+          </>
         )}
       </div>
 
-      {isRecording && (
-        <div className="text-lg font-mono text-gray-700">
-          Recording Time: {formatTime(time)}
-        </div>
-      )}
-
-      {audioUrl && (
-        <div>
-          <h2 className="text-lg font-semibold">Recorded Audio:</h2>
-          <audio controls src={audioUrl}></audio>
+      {audioUrl && !isRecording && (
+        <div className="flex items-center gap-3">
+          <audio controls src={audioUrl} className="h-12"></audio>
+          <Button
+            size="icon"
+            variant="destructive"
+            onClick={deleteRecording}
+            aria-label="Delete Recording"
+          >
+            <Trash />
+          </Button>
         </div>
       )}
     </div>

@@ -26,22 +26,12 @@ import {
   Upload,
   ArrowRight,
   ArrowLeft,
-  Trash,
   CircleCheck,
 } from "lucide-react";
 import { transcribeAudio } from "@/lib/assemblyai/transcribe";
 import { uploadAudioToCloudinary } from "@/lib/assemblyai/upload";
 import { AutoHighlightResult, Chapter, ContentSafetyLabelResult, Entity, SentimentAnalysisResult, TopicDetectionResult, Transcript } from "assemblyai";
-import dynamic from "next/dynamic";
 import AudioRecorder from "./AudioRecorder";
-
-// Dynamically import AudioRecorder
-// const AudioRecorder = dynamic(
-//   () => import("react-use-audio-recorder"),
-//   { ssr: false } // Disable server-side rendering
-// );
-// import "react-use-audio-recorder/dist/index.css";
-
 
 
 type TranscriptionType = {
@@ -305,28 +295,6 @@ const GetAudio = ({
   setAudioBlob: React.Dispatch<React.SetStateAction<Blob | null>>;
   setOpenDialog: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
-  const [localAudioUrl, setLocalAudioUrl] = useState<string | null>(null);
-
-  // Handle recording audio
-  const handleRecord = (blob: Blob) => {
-    if (blob) {
-      const tempUrl = URL.createObjectURL(blob);
-      setAudioBlob(blob);
-      setLocalAudioUrl(tempUrl);
-    } else {
-      console.error("Failed to record: Blob is null or undefined.");
-    }
-  };
-
-  // Handle deleting recorded or uploaded audio
-  const handleDeleteAudio = () => {
-    if (localAudioUrl) {
-      URL.revokeObjectURL(localAudioUrl);
-    }
-    setAudioBlob(null);
-    setLocalAudioUrl(null);
-  };
-
   return (
     <>
       <CardHeader>
@@ -337,18 +305,9 @@ const GetAudio = ({
       <CardContent>
         <div className="flex flex-col justify-center items-center">
           {/* Record audio */}
-          <AudioRecorder  />
+          <AudioRecorder setAudioBlob={setAudioBlob} />
         </div>
 
-        {localAudioUrl && (
-          <div className="mt-5 mb-10 flex items-center gap-4">
-            {/* Play recorded or uploaded audio */}
-            <audio controls src={localAudioUrl} className="w-full !h-[50px]" />
-            <Button onClick={handleDeleteAudio} variant="destructive">
-              <Trash />
-            </Button>
-          </div>
-        )}
 
         <div className="w-full flex items-center justify-between gap-5 md:gap-10">
           <div className="flex flex-col items-center">
