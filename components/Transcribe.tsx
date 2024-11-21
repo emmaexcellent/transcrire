@@ -33,13 +33,16 @@ import { transcribeAudio } from "@/lib/assemblyai/transcribe";
 import { uploadAudioToCloudinary } from "@/lib/assemblyai/upload";
 import { AutoHighlightResult, Chapter, ContentSafetyLabelResult, Entity, SentimentAnalysisResult, TopicDetectionResult, Transcript } from "assemblyai";
 import dynamic from "next/dynamic";
+import AudioRecorder from "./AudioRecorder";
 
 // Dynamically import AudioRecorder
-const AudioRecorder = dynamic(
-  () => import("react-use-audio-recorder"),
-  { ssr: false } // Disable server-side rendering
-);
-import "react-use-audio-recorder/dist/index.css";
+// const AudioRecorder = dynamic(
+//   () => import("react-use-audio-recorder"),
+//   { ssr: false } // Disable server-side rendering
+// );
+// import "react-use-audio-recorder/dist/index.css";
+
+
 
 type TranscriptionType = {
   title: string;
@@ -334,7 +337,7 @@ const GetAudio = ({
       <CardContent>
         <div className="flex flex-col justify-center items-center">
           {/* Record audio */}
-          <AudioRecorder onStop={(blob) => handleRecord(blob)} />
+          <AudioRecorder  />
         </div>
 
         {localAudioUrl && (
