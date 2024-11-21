@@ -1,9 +1,13 @@
 
 
+const cloudName = `${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}`;
+
+const uploadPreset = `${process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}`;
+
 export const uploadAudioToCloudinary = async (audioBlob: Blob | File) => {
   const formData = new FormData();
   formData.append("file", audioBlob);
-  formData.append("upload_preset", "audio_unsaved"); // Set up an unsigned preset in Cloudinary
+  formData.append("upload_preset", uploadPreset); // Set up an unsigned preset in Cloudinary
 
   // Additional Cloudinary options (e.g., transformations)
 
@@ -16,7 +20,7 @@ export const uploadAudioToCloudinary = async (audioBlob: Blob | File) => {
   try {
     // Make a POST request to upload the audio
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/dtazggaoo/video/upload`,
+      `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
       {
         method: "POST",
         body: formData,
