@@ -10,6 +10,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -28,12 +29,24 @@ import {
   ArrowLeft,
   Trash,
   CircleCheck,
+  Loader,
 } from "lucide-react";
 import { transcribeAudio } from "@/lib/assemblyai/transcribe";
 import { uploadAudioToCloudinary } from "@/lib/assemblyai/upload";
-import { AutoHighlightResult, Chapter, ContentSafetyLabelResult, Entity, SentimentAnalysisResult, TopicDetectionResult, Transcript } from "assemblyai";
+import {
+  AutoHighlightResult,
+  Chapter,
+  ContentSafetyLabelResult,
+  Entity,
+  SentimentAnalysisResult,
+  TopicDetectionResult,
+  Transcript,
+} from "assemblyai";
 import AudioRecorder from "./AudioRecorder";
-
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { Input } from "./ui/input";
 
 type TranscriptionType = {
   title: string;
@@ -107,22 +120,30 @@ const LANGUAGES: LanguageOption[] = [
 ];
 
 const Transcribe = () => {
+  const { user, isLoggedIn } = useAuth();
+  const router = useRouter();
+
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
+  const [openOptionDialog, setOpenOptionDialog] = useState(false);
   const [transcriptionType, setTranscriptionType] = useState<string>("");
   const [language, setLanguage] = useState<string>("auto");
+
   const [loadingText, setLoadingText] = useState("");
   const [transcriptionResult, setTranscriptionResult] =
     useState<Transcript | null>(null);
 
+  const [openTitleDialog, setOpenTitleDialog] = useState(false);
+
   const [transcription, setTranscription] = useState<string | null>(null);
+  const [noteTitle, setNoteTitle] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   const generateTranscription = async () => {
     if (!audioBlob) {
       console.error("No audio blob found. Please record or upload audio.");
       return;
     }
-    
+
     const getLanguageOptions = (language: string) => ({
       language_detection: language === "auto",
       ...(language !== "auto" && { language_code: language }),
@@ -190,7 +211,10 @@ const Transcribe = () => {
           const safetyLabels = result.content_safety_labels?.results || [];
           setTranscription(
             safetyLabels
-              .map((res: ContentSafetyLabelResult) => `- ${" "}${res.text} -> ${res.labels[0].label}`)
+              .map(
+                (res: ContentSafetyLabelResult) =>
+                  `- ${" "}${res.text} -> ${res.labels[0].label}`
+              )
               .join(".<br><br>")
           );
           break;
@@ -206,7 +230,10 @@ const Transcribe = () => {
           const sentiment_analysis = result.sentiment_analysis_results! || [];
           setTranscription(
             sentiment_analysis
-              .map((res: SentimentAnalysisResult) => `- ${" "}${res.text} -> ${res.sentiment}`)
+              .map(
+                (res: SentimentAnalysisResult) =>
+                  `- ${" "}${res.text} -> ${res.sentiment}`
+              )
               .join(".<br><br>")
           );
           break;
@@ -223,10 +250,11 @@ const Transcribe = () => {
           setTranscription(
             topics
               .map(
-                (res: TopicDetectionResult) => `- ${" "}${res.labels![1].label} -> ${res.text}`
+                (res: TopicDetectionResult) =>
+                  `- ${" "}${res.labels![1].label} -> ${res.text}`
               )
               .join(".<br><br>")
-          ); 
+          );
           break;
         case "phrases":
           const phrases = result.auto_highlights_result!.results || [];
@@ -234,7 +262,7 @@ const Transcribe = () => {
             phrases
               .map((res: AutoHighlightResult) => `${" "}${res.text},`)
               .join(" ")
-          ); 
+          );
           break;
         default:
           setTranscription(result.text || "");
@@ -244,7 +272,7 @@ const Transcribe = () => {
       console.error("Error during transcription process:", error);
     } finally {
       setLoadingText("");
-      setOpenDialog(false);
+      setOpenOptionDialog(false);
     }
   };
 
@@ -257,6 +285,46 @@ const Transcribe = () => {
     setTranscriptionResult(null);
   };
 
+  const saveNote = async () => {
+    const supabase = await createClient();
+
+    setSavingNote(true);
+    // Validate if the note exists
+    if (!transcription) {
+      alert("Nothing to save!");
+      return;
+    }
+
+    if (!isLoggedIn) {
+      // Save note to local storage
+      localStorage.setItem("note", JSON.stringify(transcription));
+      // Redirect user to the login page
+      router.push("/login?redirect_to=/notes/new");
+      return;
+    }
+
+    try {
+      // Save the note to Supabase database
+      const { data, error } = await supabase.from("notes").insert({
+        title: noteTitle,
+        content: transcription,
+        user_id: user?.id, // Ensure this matches the logged-in user's ID
+      });
+
+      if (error) {
+        console.error("Error inserting note:", error.message);
+      } else {
+        console.log("Note inserted successfully:", data);
+        router.push("/notes");
+      }
+    } catch (error) {
+      console.error("Error saving note to Supabase:", error);
+      alert("An error occurred while saving the note. Please try again.");
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
   return (
     <>
       <Card className="w-full max-w-xl mx-auto flex flex-col justify-center items-center bg-muted/40">
@@ -264,25 +332,48 @@ const Transcribe = () => {
           <TranscriptionCard
             transcription={transcription}
             handleResetStateProps={handleResetStateProps}
+            setOpenTitleDialog={setOpenTitleDialog}
           />
         ) : (
           <GetAudio
             audioBlob={audioBlob}
             setAudioBlob={setAudioBlob}
-            setOpenDialog={setOpenDialog}
+            setOpenOptionDialog={setOpenOptionDialog}
           />
         )}
       </Card>
       <SelectTranscriptionType
         transcriptionType={transcriptionType}
         setTranscriptionType={setTranscriptionType}
-        openDialog={openDialog}
-        setOpenDialog={setOpenDialog}
+        openOptionDialog={openOptionDialog}
+        setOpenOptionDialog={setOpenOptionDialog}
         language={language}
         setLanguage={setLanguage}
         generateTranscription={generateTranscription}
         loadingText={loadingText}
       />
+      {openTitleDialog && (
+        <Dialog open={openTitleDialog}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add Title</DialogTitle>
+              <DialogDescription />
+            </DialogHeader>
+            <Input
+              className="w-full"
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setNoteTitle(e.target.value)
+              }
+            />
+            <DialogFooter>
+              <Button onClick={() => setOpenTitleDialog(false)}>Close</Button>
+              <Button onClick={saveNote}>
+                {savingNote ? <Loader className="animate-spin" /> : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 };
@@ -290,11 +381,11 @@ const Transcribe = () => {
 const GetAudio = ({
   audioBlob,
   setAudioBlob,
-  setOpenDialog,
+  setOpenOptionDialog,
 }: {
   audioBlob: Blob | null;
   setAudioBlob: React.Dispatch<React.SetStateAction<Blob | null>>;
-  setOpenDialog: React.Dispatch<React.SetStateAction<boolean>>;
+  setOpenOptionDialog: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
   const [localAudioUrl, setLocalAudioUrl] = useState<string | null>(null);
 
@@ -313,7 +404,10 @@ const GetAudio = ({
       <CardContent>
         <div className="flex flex-col justify-center items-center">
           {/* Record audio */}
-          <AudioRecorder setAudioBlob={setAudioBlob} setLocalAudioUrl={setLocalAudioUrl} />
+          <AudioRecorder
+            setAudioBlob={setAudioBlob}
+            setLocalAudioUrl={setLocalAudioUrl}
+          />
         </div>
 
         {localAudioUrl && (
@@ -357,7 +451,7 @@ const GetAudio = ({
             <Button
               size="lg"
               disabled={!audioBlob}
-              onClick={() => setOpenDialog(true)}
+              onClick={() => setOpenOptionDialog(true)}
             >
               Continue <ArrowRight />
             </Button>
@@ -371,8 +465,8 @@ const GetAudio = ({
 const SelectTranscriptionType = ({
   transcriptionType,
   setTranscriptionType,
-  openDialog,
-  setOpenDialog,
+  openOptionDialog,
+  setOpenOptionDialog,
   language,
   setLanguage,
   generateTranscription,
@@ -380,8 +474,8 @@ const SelectTranscriptionType = ({
 }: {
   transcriptionType: string;
   setTranscriptionType: React.Dispatch<React.SetStateAction<string>>;
-  openDialog: boolean;
-  setOpenDialog: React.Dispatch<React.SetStateAction<boolean>>;
+  openOptionDialog: boolean;
+  setOpenOptionDialog: React.Dispatch<React.SetStateAction<boolean>>;
   language: string;
   setLanguage: React.Dispatch<React.SetStateAction<string>>;
   generateTranscription: () => void;
@@ -389,11 +483,11 @@ const SelectTranscriptionType = ({
 }) => {
   return (
     <>
-      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+      <Dialog open={openOptionDialog} onOpenChange={setOpenOptionDialog}>
         <DialogContent>
           <DialogHeader className="mb-3">
             <DialogTitle>Select Transcription Option</DialogTitle>
-            <DialogDescription/>
+            <DialogDescription />
           </DialogHeader>
           <Select
             defaultValue="auto"
@@ -465,9 +559,11 @@ const SelectTranscriptionType = ({
 const TranscriptionCard = ({
   transcription,
   handleResetStateProps,
+  setOpenTitleDialog,
 }: {
   transcription: string | null;
   handleResetStateProps: () => void;
+  setOpenTitleDialog: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
   const [displayedText, setDisplayedText] = useState("");
   const [copy, setCopy] = useState<string>("Copy");
@@ -530,7 +626,9 @@ const TranscriptionCard = ({
           <Button size="lg" variant="outline" onClick={handleResetStateProps}>
             <ArrowLeft /> Go Back
           </Button>
-          <Button size="lg">Save To Note</Button>
+          <Button size="lg" onClick={() => setOpenTitleDialog(true)}>
+            Save To Note
+          </Button>
         </div>
       </CardContent>
     </div>

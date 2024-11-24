@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import ModeToggle from "@/components/theme/mode-toggle"
 
@@ -56,12 +54,8 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Header />
-          <main>
             {children}
-          </main>  
-          <ModeToggle />        
-          <Footer />
+          <ModeToggle />
         </ThemeProvider>
       </body>
     </html>
