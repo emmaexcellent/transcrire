@@ -14,7 +14,7 @@ const ModeToggle = () => {
       variant="outline"
       size="icon"
       onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-      className="fixed bottom-5 left-2"
+      className="fixed bottom-10 left-5"
     >
       {/* Sun Icon for Light Mode */}
       <Sun className="h-[1.2rem] w-[1.2rem] transition-all dark:opacity-0 dark:rotate-90 dark:scale-0" />

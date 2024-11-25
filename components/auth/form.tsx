@@ -27,6 +27,7 @@ import {
 import { login, signup } from "@/actions/auth";
 import { Loader } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 
 const formSchema = z.object({
@@ -43,6 +44,8 @@ export function AuthForm({ authPage }: { authPage: string }) {
     success: "",
   });
 
+  const router = useRouter()
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -53,6 +56,7 @@ export function AuthForm({ authPage }: { authPage: string }) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
+    setMessage({ error: "", success: "" });
     let result = {
       success: false,
       message: ""
@@ -60,11 +64,11 @@ export function AuthForm({ authPage }: { authPage: string }) {
 
     if(authPage === "login") {
       result = await login(values);
+      router.push("/notes")
     } else {
       result = await signup(values);
+      router.push("/notes/new");
     }
-    
-    console.log(result.message);
 
     if (!result.success) {
       setMessage({ error: result.message, success: "" });

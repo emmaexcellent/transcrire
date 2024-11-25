@@ -13,7 +13,7 @@ export async function login(data: { email: string; password: string }) {
   if (error) {
     return { success: false, message: error.message }
   } else {
-    return { success: true, message: "Login Successful!" };
+    redirect("/notes")
   }
 
 }
@@ -26,6 +26,6 @@ export async function signup(data: { email: string; password: string }) {
   if (error) {
     return { success: false, message: error.message };
   } else {
-    return { success: true, message: "Account Created!" };
+    redirect("/notes/new");
   }
 }
